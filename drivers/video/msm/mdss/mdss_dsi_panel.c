@@ -1866,6 +1866,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->lp_off_cmds,
 		"qcom,mdss-dsi-lp-mode-off", NULL);
 
+	mdss_livedisplay_parse_dt(np, pinfo);
+
 	return 0;
 
 error:
