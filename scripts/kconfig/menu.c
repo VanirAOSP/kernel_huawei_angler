@@ -525,7 +525,7 @@ static void get_prompt_str(struct gstr *r, struct property *prop,
 {
 	int i, j;
 	struct menu *submenu[8], *menu, *location = NULL;
-	struct jump_key *jump;
+	struct jump_key *jump = NULL;
 
 	str_printf(r, _("Prompt: %s\n"), _(prop->text));
 	menu = prop->menu->parent;
@@ -538,32 +538,37 @@ static void get_prompt_str(struct gstr *r, struct property *prop,
 	}
 	if (head && location) {
 		jump = xmalloc(sizeof(struct jump_key));
+		if (jump) {
+			if (menu_is_visible(prop->menu)) {
+				/*
+				 * There is not enough room to put the hint at the
+				 * beginning of the "Prompt" line. Put the hint on the
+				 * last "Location" line even when it would belong on
+				 * the former.
+				 */
+				jump->target = prop->menu;
+			} else
+				jump->target = location;
 
-		if (menu_is_visible(prop->menu)) {
-			/*
-			 * There is not enough room to put the hint at the
-			 * beginning of the "Prompt" line. Put the hint on the
-			 * last "Location" line even when it would belong on
-			 * the former.
-			 */
-			jump->target = prop->menu;
-		} else
-			jump->target = location;
+			if (list_empty(head))
+				jump->index = 0;
+			else
+				jump->index = list_entry(head->prev, struct jump_key,
+							 entries)->index + 1;
 
-		if (list_empty(head))
-			jump->index = 0;
-		else
-			jump->index = list_entry(head->prev, struct jump_key,
-						 entries)->index + 1;
-
-		list_add_tail(&jump->entries, head);
+			list_add_tail(&jump->entries, head);
+		} else {
+			str_printf(r, _("OH SHIT! jump xmalloc failed"));
+		}
 	}
 
 	if (i > 0) {
 		str_printf(r, _("  Location:\n"));
 		for (j = 4; --i >= 0; j += 2) {
 			menu = submenu[i];
-			if (head && location && menu == location)
+			if (!jump)
+				str_printf(r, "OH SHIT! jump is NULL when trying to set its offset");
+			else if (head && location && menu == location)
 				jump->offset = r->len - 1;
 			str_printf(r, "%*c-> %s", j, ' ',
 				   _(menu_get_prompt(menu)));
